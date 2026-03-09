@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 228 38% 8%;
+  --foreground: 210 40% 96%;
+  --card: 224 36% 12%;
+  --muted: 223 24% 18%;
+  --accent: 191 97% 63%;
+  --border: 219 27% 25%;
+}
+
+* {
+  @apply border-border;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+  background-image:
+    radial-gradient(circle at 22% 12%, rgba(0, 171, 240, 0.2) 0%, transparent 35%),
+    radial-gradient(circle at 80% 22%, rgba(55, 95, 255, 0.14) 0%, transparent 30%),
+    linear-gradient(to bottom, #060c1a, #070e1f 25%, #060a17 100%);
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.02) 0px,
+    rgba(255, 255, 255, 0.02) 1px,
+    transparent 2px,
+    transparent 4px
+  );
+  opacity: 0.2;
+  z-index: 0;
+}
+
+.grid-overlay {
+  background-image: linear-gradient(rgba(61, 91, 132, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(61, 91, 132, 0.18) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent 95%);
+}
+
+.leaflet-container {
+  background: #040913;
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  animation: scan 2s linear infinite;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(83, 115, 166, 0.45);
+  border-radius: 999px;
+}
