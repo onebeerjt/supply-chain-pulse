@@ -12,6 +12,8 @@ interface FeedState {
   lastMessageAt: number | null;
   lastError: string | null;
   reconnectTimer: NodeJS.Timeout | null;
+  burstPromise: Promise<Vessel[]> | null;
+  lastBurstAt: number | null;
 }
 
 const TEN_MIN_MS = 10 * 60 * 1000;
@@ -30,7 +32,9 @@ function getState(): FeedState {
       vessels: new Map<number, Vessel>(),
       lastMessageAt: null,
       lastError: null,
-      reconnectTimer: null
+      reconnectTimer: null,
+      burstPromise: null,
+      lastBurstAt: null
     };
   }
   return global.__aisstreamState;
@@ -170,6 +174,82 @@ function ensureStarted() {
   connect(state, apiKey);
 }
 
+function collectBurst(apiKey: string, timeoutMs = 3500, maxMessages = 120): Promise<Vessel[]> {
+  const state = getState();
+  if (state.burstPromise) return state.burstPromise;
+
+  const promise = new Promise<Vessel[]>((resolve) => {
+    const local = new Map<number, Vessel>();
+    let settled = false;
+
+    const ws = new WebSocket(WS_URL);
+    const finalize = () => {
+      if (settled) return;
+      settled = true;
+      try {
+        ws.close();
+      } catch {
+        // ignore
+      }
+      const vessels = Array.from(local.values());
+      for (const vessel of vessels) {
+        state.vessels.set(vessel.mmsi, vessel);
+      }
+      cleanupStale(state);
+      state.lastBurstAt = Date.now();
+      state.burstPromise = null;
+      resolve(vessels);
+    };
+
+    const timer = setTimeout(finalize, timeoutMs);
+
+    ws.on('open', () => {
+      ws.send(
+        JSON.stringify({
+          APIKey: apiKey,
+          BoundingBoxes: [
+            [
+              [-90, -180],
+              [90, 180]
+            ]
+          ],
+          FilterMessageTypes: ['PositionReport']
+        })
+      );
+    });
+
+    ws.on('message', (chunk) => {
+      const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+      try {
+        const parsed = JSON.parse(text);
+        const vessel = normalizePayload(parsed);
+        if (!vessel) return;
+        local.set(vessel.mmsi, vessel);
+        if (local.size >= maxMessages) {
+          clearTimeout(timer);
+          finalize();
+        }
+      } catch {
+        // ignore malformed burst message
+      }
+    });
+
+    ws.on('error', (err) => {
+      state.lastError = err.message;
+      clearTimeout(timer);
+      finalize();
+    });
+
+    ws.on('close', () => {
+      clearTimeout(timer);
+      finalize();
+    });
+  });
+
+  state.burstPromise = promise;
+  return promise;
+}
+
 export async function getAisVesselsSnapshot(): Promise<{
   mode: FeedMode;
   message?: string;
@@ -192,7 +272,20 @@ export async function getAisVesselsSnapshot(): Promise<{
   const state = getState();
   cleanupStale(state);
 
-  const vessels = Array.from(state.vessels.values());
+  let vessels = Array.from(state.vessels.values());
+  const cacheStale = !state.lastMessageAt || Date.now() - state.lastMessageAt > 90_000;
+  const burstCooldownPassed = !state.lastBurstAt || Date.now() - state.lastBurstAt > 20_000;
+  if ((vessels.length === 0 || cacheStale) && burstCooldownPassed) {
+    try {
+      const burst = await collectBurst(apiKey);
+      if (burst.length > 0) {
+        vessels = Array.from(state.vessels.values());
+      }
+    } catch {
+      // continue with cached/fallback behavior
+    }
+  }
+
   if (vessels.length > 0) {
     return {
       mode: 'live',

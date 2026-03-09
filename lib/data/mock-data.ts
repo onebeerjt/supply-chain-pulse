@@ -99,27 +99,27 @@ export const mockWebcams: Webcam[] = [
   {
     id: 'cam-la',
     portSlug: 'port-of-los-angeles',
-    title: 'Port of Los Angeles Main Channel',
+    title: 'Port of Los Angeles Waterfront Livestream',
     sourceName: 'Port of Los Angeles',
-    url: 'https://www.portoflosangeles.org/',
-    previewImage: 'https://images.unsplash.com/photo-1618221469555-7f3ad97540d6?auto=format&fit=crop&w=1200&q=80',
+    url: 'https://www.portoflosangeles.org/news/livestream',
+    previewImage: 'https://images.unsplash.com/photo-1590496793929-36417d3117de?auto=format&fit=crop&w=1200&q=80',
     isEmbeddable: false
   },
   {
     id: 'cam-lb',
     portSlug: 'port-of-long-beach',
-    title: 'Long Beach Harbor View',
-    sourceName: 'Port of Long Beach',
-    url: 'https://polb.com/',
+    title: 'Long Beach Harbor Camera',
+    sourceName: 'Cruising Earth',
+    url: 'https://www.cruisingearth.com/port-webcams/united-states/long-beach-california/',
     previewImage: 'https://images.unsplash.com/photo-1589778655375-3f2b6f8f95a8?auto=format&fit=crop&w=1200&q=80',
     isEmbeddable: false
   },
   {
     id: 'cam-rotterdam',
     portSlug: 'port-of-rotterdam',
-    title: 'Rotterdam Port Traffic Cam',
+    title: 'Rotterdam Port Webcam Hub',
     sourceName: 'Port of Rotterdam',
-    url: 'https://www.portofrotterdam.com/',
+    url: 'https://www.portofrotterdam.com/en/experience-online/webcams',
     previewImage: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80',
     isEmbeddable: false
   },
@@ -128,16 +128,17 @@ export const mockWebcams: Webcam[] = [
     portSlug: 'panama-canal',
     title: 'Panama Canal Miraflores Locks',
     sourceName: 'Panama Canal Authority',
-    url: 'https://multimedia.pancanal.com/',
+    url: 'https://multimedia.panama-canal.com/Webcams/miraflores.html',
+    embedUrl: 'https://multimedia.panama-canal.com/Webcams/miraflores.html',
     previewImage: 'https://images.unsplash.com/photo-1516900557549-41557d405adf?auto=format&fit=crop&w=1200&q=80',
-    isEmbeddable: false
+    isEmbeddable: true
   },
   {
     id: 'cam-singapore',
     portSlug: 'port-of-singapore',
-    title: 'Singapore Maritime Traffic',
-    sourceName: 'MPA Singapore',
-    url: 'https://www.mpa.gov.sg/',
+    title: 'Singapore Strait Vessel Cam',
+    sourceName: 'World Cams',
+    url: 'https://worldcams.tv/singapore/singapore/port-of-singapore-live-webcam',
     previewImage: 'https://images.unsplash.com/photo-1541417904950-b855846fe074?auto=format&fit=crop&w=1200&q=80',
     isEmbeddable: false
   },
