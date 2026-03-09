@@ -22,10 +22,10 @@ export function PortMiniMap({ port, vessels }: { port: Port; vessels: Vessel[] }
         {vessels.map((vessel) => (
           <Marker
             key={vessel.id}
-            position={[vessel.coordinates.lat, vessel.coordinates.lng]}
+            position={[vessel.lat, vessel.lon]}
             icon={divIcon({ className: 'nearby-vessel', html: '<div style="width:10px;height:10px;border-radius:999px;background:#f59e0b"></div>' })}
           >
-            <Popup>{vessel.name}</Popup>
+            <Popup>MMSI {vessel.mmsi}</Popup>
           </Marker>
         ))}
       </MapContainer>

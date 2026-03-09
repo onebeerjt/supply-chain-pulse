@@ -6,5 +6,5 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const snapshot = await getCongestionSnapshot();
-  return NextResponse.json(snapshot, { status: 200 });
+  return NextResponse.json({ generatedAt: snapshot.generatedAt, ports: snapshot.ports }, { status: 200 });
 }

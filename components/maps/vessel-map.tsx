@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from 'react-leaflet';
 import { divIcon } from 'leaflet';
@@ -7,14 +8,22 @@ import { Port, Vessel } from '@/lib/types/domain';
 import { tradeLanes } from '@/lib/data/mock-data';
 import { Card } from '@/components/ui/card';
 
-function markerColorBySeverity(severity: Vessel['severity']) {
+function vesselSeverity(vessel: Vessel): 'low' | 'medium' | 'high' | 'critical' {
+  if ((vessel.speed ?? 0) < 2) return 'critical';
+  if ((vessel.speed ?? 0) < 6) return 'high';
+  if ((vessel.speed ?? 0) < 12) return 'medium';
+  return 'low';
+}
+
+function markerColorBySeverity(severity: ReturnType<typeof vesselSeverity>) {
   if (severity === 'critical') return '#ef4444';
   if (severity === 'high') return '#f97316';
   if (severity === 'medium') return '#f59e0b';
   return '#22c55e';
 }
 
-function vesselIcon(severity: Vessel['severity']) {
+function vesselIcon(vessel: Vessel) {
+  const severity = vesselSeverity(vessel);
   const color = markerColorBySeverity(severity);
   const pulse = severity === 'critical' || severity === 'high';
   return divIcon({
@@ -30,15 +39,15 @@ const majorRegions = [
   { label: 'Panama Canal', coords: [9.08, -79.68] as [number, number] },
   { label: 'Singapore', coords: [1.26, 103.84] as [number, number] },
   { label: 'Rotterdam', coords: [51.95, 4.14] as [number, number] },
-  { label: 'Shanghai / Ningbo', coords: [30.7, 121.9] as [number, number] }
+  { label: 'Shanghai', coords: [31.23, 121.47] as [number, number] }
 ];
 
 function MapLegend() {
   const legend = [
-    { label: 'Low', color: '#22c55e' },
-    { label: 'Medium', color: '#f59e0b' },
-    { label: 'High', color: '#f97316' },
-    { label: 'Critical', color: '#ef4444' }
+    { label: 'Transit Stable', color: '#22c55e' },
+    { label: 'Moderate Speed', color: '#f59e0b' },
+    { label: 'Slow/Queue', color: '#f97316' },
+    { label: 'Near Standstill', color: '#ef4444' }
   ];
 
   return (
@@ -48,7 +57,7 @@ function MapLegend() {
         {legend.map((item) => (
           <div key={item.label} className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-            <span>Vessel {item.label}</span>
+            <span>{item.label}</span>
           </div>
         ))}
         <div className="mt-1 border-t border-white/10 pt-1 text-[11px] text-slate-400">Dashed lanes: major trade routes</div>
@@ -57,16 +66,58 @@ function MapLegend() {
   );
 }
 
-export function VesselMap({ vessels, ports }: { vessels: Vessel[]; ports: Port[] }) {
-  const portMap = new Map(ports.map((port) => [port.slug, port]));
+interface VesselApiResponse {
+  vessels: Vessel[];
+  sourceMode: 'live' | 'fallback' | 'unavailable';
+  message?: string;
+  updatedAt: string;
+}
+
+export function VesselMap({ ports }: { ports: Port[] }) {
+  const [payload, setPayload] = useState<VesselApiResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchVessels = useCallback(async () => {
+    try {
+      const response = await fetch('/api/vessels', { cache: 'no-store' });
+      if (!response.ok) throw new Error('Failed to load vessels');
+      const data = (await response.json()) as VesselApiResponse;
+      setPayload(data);
+    } catch {
+      setPayload({ vessels: [], sourceMode: 'unavailable', message: 'Live vessel feed unavailable', updatedAt: new Date().toISOString() });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchVessels();
+    const timer = setInterval(() => {
+      void fetchVessels();
+    }, 20_000);
+    return () => clearInterval(timer);
+  }, [fetchVessels]);
+
+  const vessels = useMemo(() => payload?.vessels ?? [], [payload]);
+  const portMap = useMemo(() => new Map(ports.map((port) => [port.slug, port])), [ports]);
 
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-semibold text-cyan-100">Live Ship Map</h3>
-        <div className="text-xs text-slate-400">World view | Pan, zoom, and inspect vessels by lane pressure</div>
+        <div className="text-xs text-slate-400">Source: AISStream websocket via server route</div>
       </div>
+
+      {payload?.sourceMode === 'unavailable' ? (
+        <Card className="p-4 text-sm text-amber-200">Live vessel feed unavailable</Card>
+      ) : null}
+
+      {payload?.message && payload.sourceMode !== 'unavailable' ? (
+        <Card className="p-3 text-xs text-amber-200">{payload.message}</Card>
+      ) : null}
+
       <div className="relative h-[520px] overflow-hidden rounded-2xl border border-white/10 shadow-glow">
+        {loading ? <div className="shimmer absolute inset-0 z-[450] h-full w-full bg-card/60" /> : null}
         <MapContainer center={[21, 8]} zoom={2} className="h-full w-full" worldCopyJump minZoom={2}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -74,11 +125,7 @@ export function VesselMap({ vessels, ports }: { vessels: Vessel[]; ports: Port[]
           />
 
           {tradeLanes.map((lane) => (
-            <Polyline
-              key={lane.id}
-              positions={lane.path as [number, number][]}
-              pathOptions={{ color: lane.color, weight: 4, opacity: 0.25 }}
-            />
+            <Polyline key={lane.id} positions={lane.path as [number, number][]} pathOptions={{ color: lane.color, weight: 4, opacity: 0.25 }} />
           ))}
 
           {tradeLanes.map((lane) => (
@@ -98,18 +145,23 @@ export function VesselMap({ vessels, ports }: { vessels: Vessel[]; ports: Port[]
           ))}
 
           {vessels.map((vessel) => {
-            const destination = portMap.get(vessel.destinationPortSlug);
+            const nearestPort = Array.from(portMap.values()).sort((a, b) => {
+              const dA = Math.hypot(vessel.lat - a.coordinates.lat, vessel.lon - a.coordinates.lng);
+              const dB = Math.hypot(vessel.lat - b.coordinates.lat, vessel.lon - b.coordinates.lng);
+              return dA - dB;
+            })[0];
+
             return (
-              <Marker key={vessel.id} position={[vessel.coordinates.lat, vessel.coordinates.lng]} icon={vesselIcon(vessel.severity)}>
+              <Marker key={vessel.id} position={[vessel.lat, vessel.lon]} icon={vesselIcon(vessel)}>
                 <Popup>
                   <div className="space-y-1 text-xs">
                     <p>
-                      <strong>{vessel.name}</strong> ({vessel.type})
+                      <strong>MMSI {vessel.mmsi}</strong>
                     </p>
-                    <p>Status: {vessel.status}</p>
-                    <p>Speed: {vessel.speedKnots.toFixed(1)} kn</p>
-                    <p>ETA: {vessel.etaHours}h to {destination?.name ?? vessel.destinationPortSlug}</p>
-                    <p>Lane: {vessel.routeLane}</p>
+                    <p>Speed: {vessel.speed?.toFixed(1) ?? 'n/a'} kn</p>
+                    <p>Course: {vessel.course?.toFixed(0) ?? 'n/a'}°</p>
+                    <p>Nearest hub: {nearestPort?.name ?? 'n/a'}</p>
+                    <p>Updated: {new Date(vessel.updatedAt).toISOString()}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -122,8 +174,14 @@ export function VesselMap({ vessels, ports }: { vessels: Vessel[]; ports: Port[]
 
       <style jsx>{`
         @keyframes pulse-ring {
-          0% { transform: scale(0.7); opacity: 0.8; }
-          100% { transform: scale(1.6); opacity: 0; }
+          0% {
+            transform: scale(0.7);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1.6);
+            opacity: 0;
+          }
         }
       `}</style>
     </section>

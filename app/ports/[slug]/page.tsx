@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import dynamic from 'next/dynamic';
+import dynamicImport from 'next/dynamic';
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/dashboard/app-shell';
 import { DailyBriefCard } from '@/components/dashboard/daily-brief-card';
@@ -13,10 +13,12 @@ import { getWebcams } from '@/lib/providers/webcamProvider';
 import { getWeatherAlerts } from '@/lib/providers/weatherProvider';
 import { getDailyBrief } from '@/lib/providers/summaryProvider';
 
-const PortMiniMap = dynamic(() => import('@/components/maps/port-mini-map').then((m) => m.PortMiniMap), {
+const PortMiniMap = dynamicImport(() => import('@/components/maps/port-mini-map').then((m) => m.PortMiniMap), {
   ssr: false,
   loading: () => <div className="shimmer h-72 rounded-2xl bg-white/5" />
 });
+
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const port = await getPortBySlug(params.slug);
@@ -32,7 +34,13 @@ export default async function PortDetailPage({ params }: { params: { slug: strin
   if (!port) notFound();
 
   const [vessels, webcams, weather, brief] = await Promise.all([getVessels(), getWebcams(), getWeatherAlerts(), getDailyBrief()]);
-  const localVessels = vessels.vessels.filter((v) => v.destinationPortSlug === port.slug).slice(0, 10);
+  const localVessels = vessels.vessels
+    .filter((v) => {
+      const dLat = v.lat - port.coordinates.lat;
+      const dLon = v.lon - port.coordinates.lng;
+      return Math.hypot(dLat, dLon) < 1.2;
+    })
+    .slice(0, 20);
   const localWebcams = webcams.webcams.filter((w) => w.portSlug === port.slug);
   const localWeather = weather.alerts.filter((alert) => alert.region === port.region).slice(0, 3);
 

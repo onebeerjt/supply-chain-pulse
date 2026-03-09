@@ -34,6 +34,9 @@ export async function getDashboardData() {
       weather: weather.sourceMode,
       webcams: webcams.sourceMode,
       brief: brief.sourceMode === 'live-llm' ? 'live' : 'sample'
+    },
+    feedMessages: {
+      vessels: vessels.message
     }
   };
 }

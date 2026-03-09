@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/card';
 import { TrendIndicator } from '@/components/ui/trend-indicator';
 import { getCongestionSnapshot } from '@/lib/providers/portCongestionProvider';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Ports Overview | Supply Chain Pulse',
   description: 'Global port congestion ranking with queue depth, average delays, and trend velocity.'

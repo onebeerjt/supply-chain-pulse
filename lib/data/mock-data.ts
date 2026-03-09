@@ -1,4 +1,4 @@
-import { Port, SupplyChainAlert, Vessel, WeatherAlert, Webcam } from '@/lib/types/domain';
+import { Port, SupplyChainAlert, WeatherAlert, Webcam } from '@/lib/types/domain';
 
 const now = () => new Date().toISOString();
 
@@ -75,33 +75,6 @@ export const mockPorts: Port[] = [
     status: 'elevated', berthUtilizationPct: 74, dwellTimeHours: 38, tradeLaneExposure: 'US East Coast import surge',
     sparkline: [56, 57, 58, 59, 60, 61], updatedAt: now()
   }
-];
-
-export const mockVessels: Vessel[] = [
-  { id: 'v-001', name: 'Ever Meridian', type: 'Container', region: 'Americas', coordinates: { lat: 34.5, lng: -124.1 }, heading: 102, speedKnots: 16.2, destinationPortSlug: 'port-of-los-angeles', etaHours: 21, status: 'Underway', routeLane: 'Trans-Pacific Eastbound', severity: 'high' },
-  { id: 'v-002', name: 'Pacific Relay', type: 'Container', region: 'Americas', coordinates: { lat: 19.1, lng: -114.8 }, heading: 88, speedKnots: 18.3, destinationPortSlug: 'port-of-long-beach', etaHours: 39, status: 'Underway', routeLane: 'Trans-Pacific Eastbound', severity: 'medium' },
-  { id: 'v-003', name: 'Canal Vector', type: 'Container', region: 'Americas', coordinates: { lat: 9.3, lng: -79.9 }, heading: 27, speedKnots: 4.2, destinationPortSlug: 'panama-canal', etaHours: 6, status: 'Queued', routeLane: 'Canal Transit Queue', severity: 'critical' },
-  { id: 'v-004', name: 'Atlantic Lumina', type: 'Tanker', region: 'Europe', coordinates: { lat: 53.1, lng: 2.4 }, heading: 61, speedKnots: 11.4, destinationPortSlug: 'port-of-rotterdam', etaHours: 17, status: 'Underway', routeLane: 'North Sea Inbound', severity: 'low' },
-  { id: 'v-005', name: 'Strait Runner', type: 'Container', region: 'Asia', coordinates: { lat: 1.1, lng: 103.1 }, heading: 34, speedKnots: 7.4, destinationPortSlug: 'port-of-singapore', etaHours: 8, status: 'Queued', routeLane: 'Malacca Approach', severity: 'high' },
-  { id: 'v-006', name: 'Shanghai Crest', type: 'Container', region: 'Asia', coordinates: { lat: 30.8, lng: 122.4 }, heading: 197, speedKnots: 9.6, destinationPortSlug: 'port-of-shanghai', etaHours: 11, status: 'Queued', routeLane: 'Yangtze Delta', severity: 'medium' },
-  { id: 'v-007', name: 'Ningbo Arc', type: 'Bulk Carrier', region: 'Asia', coordinates: { lat: 28.9, lng: 122.1 }, heading: 270, speedKnots: 12.2, destinationPortSlug: 'port-of-ningbo', etaHours: 10, status: 'Underway', routeLane: 'East China Coastal', severity: 'medium' },
-  { id: 'v-008', name: 'Euro Harbor', type: 'Container', region: 'Europe', coordinates: { lat: 52.0, lng: 4.0 }, heading: 185, speedKnots: 5.7, destinationPortSlug: 'port-of-rotterdam', etaHours: 3, status: 'At Berth', routeLane: 'A12 Feeder', severity: 'low' },
-  { id: 'v-009', name: 'Santos Lift', type: 'Bulk Carrier', region: 'Americas', coordinates: { lat: -24.9, lng: -44.9 }, heading: 310, speedKnots: 10.2, destinationPortSlug: 'port-of-santos', etaHours: 20, status: 'Underway', routeLane: 'South Atlantic', severity: 'medium' },
-  { id: 'v-010', name: 'Gulf Horizon', type: 'Tanker', region: 'Americas', coordinates: { lat: 28.2, lng: -90.2 }, heading: 72, speedKnots: 13.8, destinationPortSlug: 'port-of-savannah', etaHours: 44, status: 'Underway', routeLane: 'US Gulf to East Coast', severity: 'high' },
-  { id: 'v-011', name: 'Hamburg Star', type: 'RoRo', region: 'Europe', coordinates: { lat: 54.5, lng: 8.6 }, heading: 119, speedKnots: 14.1, destinationPortSlug: 'port-of-hamburg', etaHours: 14, status: 'Underway', routeLane: 'North Europe Coastal', severity: 'low' },
-  { id: 'v-012', name: 'Felix Vanguard', type: 'Container', region: 'Europe', coordinates: { lat: 52.4, lng: 1.6 }, heading: 202, speedKnots: 8.4, destinationPortSlug: 'port-of-felixstowe', etaHours: 5, status: 'Queued', routeLane: 'English Channel Northbound', severity: 'medium' },
-  { id: 'v-013', name: 'Desert Bridge', type: 'Container', region: 'Asia', coordinates: { lat: 24.1, lng: 56.7 }, heading: 242, speedKnots: 15.1, destinationPortSlug: 'port-of-jebel-ali', etaHours: 16, status: 'Underway', routeLane: 'Arabian Gulf Inbound', severity: 'low' },
-  { id: 'v-014', name: 'Pacific Lantern', type: 'Container', region: 'Asia', coordinates: { lat: 14.8, lng: 128.4 }, heading: 291, speedKnots: 17.4, destinationPortSlug: 'port-of-singapore', etaHours: 51, status: 'Underway', routeLane: 'East Asia Southbound', severity: 'medium' },
-  { id: 'v-015', name: 'Meridian Queen', type: 'Container', region: 'Americas', coordinates: { lat: 36.9, lng: -129.4 }, heading: 94, speedKnots: 18.8, destinationPortSlug: 'port-of-los-angeles', etaHours: 33, status: 'Underway', routeLane: 'Trans-Pacific Eastbound', severity: 'high' },
-  { id: 'v-016', name: 'Canal Echo', type: 'Tanker', region: 'Americas', coordinates: { lat: 8.7, lng: -80.1 }, heading: 33, speedKnots: 3.8, destinationPortSlug: 'panama-canal', etaHours: 9, status: 'Queued', routeLane: 'Canal Transit Queue', severity: 'critical' },
-  { id: 'v-017', name: 'Typhoon Watch', type: 'Container', region: 'Asia', coordinates: { lat: 23.4, lng: 126.0 }, heading: 211, speedKnots: 11.8, destinationPortSlug: 'port-of-shanghai', etaHours: 27, status: 'Underway', routeLane: 'East China Sea', severity: 'high' },
-  { id: 'v-018', name: 'Aegean Route', type: 'Container', region: 'Europe', coordinates: { lat: 36.5, lng: 18.1 }, heading: 310, speedKnots: 14.9, destinationPortSlug: 'port-of-rotterdam', etaHours: 54, status: 'Underway', routeLane: 'Suez to North Europe', severity: 'medium' },
-  { id: 'v-019', name: 'Savannah Link', type: 'RoRo', region: 'Americas', coordinates: { lat: 31.6, lng: -79.5 }, heading: 322, speedKnots: 9.7, destinationPortSlug: 'port-of-savannah', etaHours: 7, status: 'Queued', routeLane: 'US East Coast Approach', severity: 'medium' },
-  { id: 'v-020', name: 'Nereid One', type: 'Bulk Carrier', region: 'Asia', coordinates: { lat: -2.1, lng: 106.5 }, heading: 44, speedKnots: 13.1, destinationPortSlug: 'port-of-singapore', etaHours: 24, status: 'Underway', routeLane: 'Java Sea Northbound', severity: 'low' },
-  { id: 'v-021', name: 'Rotterdam Flux', type: 'Tanker', region: 'Europe', coordinates: { lat: 50.8, lng: -1.3 }, heading: 49, speedKnots: 12.6, destinationPortSlug: 'port-of-rotterdam', etaHours: 30, status: 'Underway', routeLane: 'Channel to North Sea', severity: 'medium' },
-  { id: 'v-022', name: 'Andes Carrier', type: 'Container', region: 'Americas', coordinates: { lat: -16.5, lng: -76.2 }, heading: 338, speedKnots: 15.5, destinationPortSlug: 'panama-canal', etaHours: 48, status: 'Underway', routeLane: 'Pacific Coast Southbound', severity: 'medium' },
-  { id: 'v-023', name: 'Delta Harbour', type: 'Container', region: 'Asia', coordinates: { lat: 3.1, lng: 100.0 }, heading: 78, speedKnots: 16.8, destinationPortSlug: 'port-of-singapore', etaHours: 13, status: 'Underway', routeLane: 'Malacca Eastbound', severity: 'high' },
-  { id: 'v-024', name: 'Harbor Crest', type: 'Container', region: 'Americas', coordinates: { lat: 33.1, lng: -119.6 }, heading: 25, speedKnots: 7.9, destinationPortSlug: 'port-of-long-beach', etaHours: 12, status: 'Queued', routeLane: 'SoCal Approach', severity: 'high' }
 ];
 
 export const mockWeatherAlerts: WeatherAlert[] = [

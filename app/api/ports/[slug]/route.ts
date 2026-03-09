@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getPortBySlug } from '@/lib/providers/portCongestionProvider';
 
 const paramsSchema = z.object({ slug: z.string().min(1) });
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(_: Request, context: { params: { slug: string } }) {
   const parsed = paramsSchema.safeParse(context.params);

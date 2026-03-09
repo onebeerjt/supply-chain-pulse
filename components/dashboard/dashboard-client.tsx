@@ -10,7 +10,7 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { WeatherAlertPanel } from '@/components/dashboard/weather-alert-panel';
 import { WebcamGrid } from '@/components/dashboard/webcam-grid';
 import { Card } from '@/components/ui/card';
-import { DailyBrief, Port, Region, SupplyChainAlert, Vessel, WeatherAlert, Webcam } from '@/lib/types/domain';
+import { DailyBrief, Port, Region, SupplyChainAlert, WeatherAlert, Webcam } from '@/lib/types/domain';
 
 const VesselMap = dynamic(() => import('@/components/maps/vessel-map').then((m) => m.VesselMap), {
   ssr: false,
@@ -21,42 +21,39 @@ export function DashboardClient({
   metrics,
   brief,
   ports,
-  vessels,
   disruptions,
   weather,
   webcams,
-  sourceModes
+  sourceModes,
+  vesselMessage
 }: {
   metrics: { vesselsTracked: number; congestedPorts: number; activeAlerts: number; liveWebcams: number };
   brief: DailyBrief;
   ports: Port[];
-  vessels: Vessel[];
   disruptions: SupplyChainAlert[];
   weather: WeatherAlert[];
   webcams: Webcam[];
   sourceModes: Record<string, string>;
+  vesselMessage?: string;
 }) {
   const [region, setRegion] = useState<Region | 'All'>('All');
 
   const filtered = useMemo(
     () => ({
       ports: region === 'All' ? ports : ports.filter((p) => p.region === region),
-      vessels: region === 'All' ? vessels : vessels.filter((v) => v.region === region),
       weather: region === 'All' ? weather : weather.filter((w) => w.region === region),
       disruptions: region === 'All' ? disruptions : disruptions.filter((d) => d.region === region)
     }),
-    [region, ports, vessels, weather, disruptions]
+    [region, ports, weather, disruptions]
   );
 
-  const sampleSources = Object.entries(sourceModes)
-    .filter(([, mode]) => mode === 'sample')
-    .map(([key]) => key);
+  const modePills = Object.entries(sourceModes).filter(([, mode]) => mode !== 'live');
 
   return (
     <>
       <section className="grid gap-3 md:grid-cols-4">
-        <StatCard label="Vessels Tracked" value={metrics.vesselsTracked} accent="Global lane coverage" />
-        <StatCard label="Congested Ports" value={metrics.congestedPorts} accent="Elevated + severe status" />
+        <StatCard label="Vessels Tracked" value={metrics.vesselsTracked} accent="AISStream ingest" />
+        <StatCard label="Congested Ports" value={metrics.congestedPorts} accent="Density-derived status" />
         <StatCard label="Active Alerts" value={metrics.activeAlerts} accent="Weather + operational risk" />
         <StatCard label="Live Webcams" value={metrics.liveWebcams} accent="Public source links" />
       </section>
@@ -79,19 +76,20 @@ export function DashboardClient({
                 {entry}
               </button>
             ))}
-            {sampleSources.length > 0 && (
-              <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs text-amber-200">
-                Demo Mode: {sampleSources.join(', ')}
+            {modePills.map(([name, mode]) => (
+              <span key={name} className="rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs text-amber-200">
+                {name}: {mode}
               </span>
-            )}
+            ))}
           </div>
+          {vesselMessage ? <p className="mt-3 text-xs text-amber-200">{vesselMessage}</p> : null}
         </Card>
 
         <DailyBriefCard brief={brief} />
       </section>
 
       <AlertTicker alerts={filtered.disruptions} />
-      <VesselMap vessels={filtered.vessels} ports={filtered.ports} />
+      <VesselMap ports={filtered.ports.length > 0 ? filtered.ports : ports} />
 
       <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <PortRankingTable ports={filtered.ports} regionFilter={region} />

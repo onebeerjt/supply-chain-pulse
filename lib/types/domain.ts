@@ -39,17 +39,12 @@ export interface CongestionSnapshot {
 
 export interface Vessel {
   id: string;
-  name: string;
-  type: 'Container' | 'Bulk Carrier' | 'Tanker' | 'RoRo';
-  region: Region;
-  coordinates: Coordinates;
-  heading: number;
-  speedKnots: number;
-  destinationPortSlug: string;
-  etaHours: number;
-  status: 'Underway' | 'Queued' | 'At Berth';
-  routeLane: string;
-  severity: Severity;
+  mmsi: number;
+  lat: number;
+  lon: number;
+  speed?: number;
+  course?: number;
+  updatedAt: string;
 }
 
 export interface Webcam {

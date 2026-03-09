@@ -2,7 +2,7 @@
 
 **Live global logistics intelligence.**
 
-Supply Chain Pulse is a public, map-first logistics intelligence MVP that combines vessel movement, port congestion, disruption alerts, weather risk, webcams, and AI-generated daily briefings in one fast terminal-style dashboard.
+Supply Chain Pulse is a public, map-first logistics intelligence MVP that combines live AIS vessel movement, density-based port congestion signals, disruption alerts, weather risk, webcams, and daily brief generation in one terminal-style dashboard.
 
 ## Screenshots
 
@@ -12,17 +12,24 @@ Supply Chain Pulse is a public, map-first logistics intelligence MVP that combin
 
 ## Features
 
-- Live ship map with key maritime zones and trade lane overlays
-- Clickable vessel markers with ETA, lane, speed, and destination context
-- Port congestion ranking with sortable metrics and mini trends
-- Port detail pages with local map, weather risk, webcam links, and AI brief context
-- Live port webcam cards with embeddable/official-link safe fallback handling
-- Weather disruption alerts with logistics impact language
-- Daily Brief module with:
-  - LLM mode when `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is set
-  - deterministic template mode when keys are missing
-- Disruption ticker and route-level alerts
-- Demo/sample mode badges when live feeds are unavailable
+- Live ship map backed by AISStream WebSocket ingest
+- Server-side vessel cache (rolling 10 minutes) exposed via `/api/vessels`
+- Density-based congestion estimation around 6 major hubs:
+  - Los Angeles
+  - Long Beach
+  - Rotterdam
+  - Shanghai
+  - Singapore
+  - Panama Canal
+- Congestion status heuristics from vessel counts within ~25km radius:
+  - `0-10`: Normal
+  - `10-25`: Elevated
+  - `25+`: Severe
+- Webcam cards with embeddable iframe mode and safe preview-card fallback
+- Weather disruption module with logistics-impact text
+- Daily Brief module:
+  - LLM mode with `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+  - deterministic template fallback if keys are missing
 
 ## Stack
 
@@ -34,6 +41,7 @@ Supply Chain Pulse is a public, map-first logistics intelligence MVP that combin
 - Recharts
 - Lucide icons
 - Zod
+- `ws` for AISStream server-side WebSocket ingest
 
 ## Local Setup
 
@@ -52,25 +60,48 @@ npm run start
 
 ## Environment Variables
 
-All env vars are optional for local/dev/demo usage.
-
 ```bash
-NEXT_PUBLIC_MAPBOX_TOKEN=
+AISSTREAM_API_KEY=
 OPENWEATHER_API_KEY=
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
-VESSEL_API_KEY=
-PORT_DATA_API_KEY=
+NEXT_PUBLIC_MAPBOX_TOKEN=
 ```
 
-## Mock vs Live Data Mode
+### AISSTREAM_API_KEY
 
-Provider adapters in `lib/providers` choose mode per feed:
+1. Create an account at [aisstream.io](https://aisstream.io/)
+2. Generate an API key
+3. Add it to `.env.local` as `AISSTREAM_API_KEY`
 
-- `live` mode: corresponding API key exists
-- `sample` mode: key missing or live call unavailable
+This key is used only on the server and is never exposed to the browser.
 
-The app is designed to remain fully functional with zero keys. UI badges clearly indicate demo/sample mode.
+## Vessel Tracking Architecture
+
+- Server-side module establishes a WebSocket connection to AISStream.
+- Incoming position reports are normalized to:
+
+```ts
+{
+  id: string
+  mmsi: number
+  lat: number
+  lon: number
+  speed?: number
+  course?: number
+  updatedAt: string
+}
+```
+
+- In-memory cache keeps only vessels updated in the last ~10 minutes.
+- `/api/vessels` returns normalized JSON from cache.
+- Browser map polls `/api/vessels`; no client-side WebSocket is opened.
+
+## Fallback Behavior
+
+- If `AISSTREAM_API_KEY` is missing: vessel module shows `Live vessel feed unavailable`.
+- If AIS connection errors or is still warming up: fallback vessel sample is used temporarily.
+- Weather and brief modules also degrade gracefully when optional keys are missing.
 
 ## Routes
 
@@ -82,9 +113,10 @@ The app is designed to remain fully functional with zero keys. UI badges clearly
 
 API routes:
 
+- `/api/vessels`
 - `/api/ports`
 - `/api/ports/[slug]`
-- `/api/vessels`
+- `/api/congestion`
 - `/api/weather-alerts`
 - `/api/webcams`
 - `/api/daily-brief`
@@ -110,53 +142,25 @@ lib/
 public/
 ```
 
-## GitHub Setup
+## GitHub + Vercel
 
-Recommended new repository: `github.com/onebeerjt/supply-chain-pulse`
-
-```bash
-git init
-git branch -M main
-git add .
-git commit -m "Initial commit: Supply Chain Pulse MVP"
-```
-
-With GitHub CLI:
-
-```bash
-gh repo create onebeerjt/supply-chain-pulse --public --source=. --remote=origin --push
-```
-
-Without GitHub CLI:
-
-1. Create a new empty GitHub repo named `supply-chain-pulse`.
-2. Then run:
-
-```bash
-git remote add origin git@github.com:onebeerjt/supply-chain-pulse.git
-git push -u origin main
-```
-
-## Vercel Deployment
-
-1. Push repository to GitHub.
-2. In Vercel, click **Add New Project** and import this repo.
-3. Add any optional env vars in Project Settings > Environment Variables.
+1. Push to GitHub.
+2. Import repo in Vercel.
+3. Set env vars in Vercel project settings (especially `AISSTREAM_API_KEY`).
 4. Deploy.
 
-No database setup is required. API routes are serverless-compatible.
+No database setup is required.
 
 ## Why This Is Different From Enterprise Logistics Software
 
 - Public-facing and instantly accessible
 - Map-first visual intelligence, not workflow-heavy back-office UX
-- Combines webcams + weather + congestion + summaries in one terminal-style surface
+- Combines webcams + weather + congestion + summary in one surface
 - Lightweight and fast for operators, brokers, investors, and curious users
 
 ## Future Improvements
 
-- Real AIS/terminal data connectors with provider failover
-- Historical playback and congestion regime shifts
-- Lane-level predictive ETA and disruption probability
-- User watchlists and notification subscriptions
-- Time-series warehouse for deeper analytics
+- Persisted time-series history for true congestion trend analytics
+- Per-lane ETA and anomaly detection models
+- Multi-provider AIS failover
+- Alert subscriptions and watchlists
