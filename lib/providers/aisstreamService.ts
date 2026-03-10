@@ -174,22 +174,27 @@ function ensureStarted() {
   connect(state, apiKey);
 }
 
-function collectBurst(apiKey: string, timeoutMs = 3500, maxMessages = 120): Promise<Vessel[]> {
+function collectBurst(apiKey: string, timeoutMs = 12000, maxMessages = 120): Promise<Vessel[]> {
   const state = getState();
   if (state.burstPromise) return state.burstPromise;
 
   const promise = new Promise<Vessel[]>((resolve) => {
     const local = new Map<number, Vessel>();
     let settled = false;
+    let opened = false;
 
     const ws = new WebSocket(WS_URL);
     const finalize = () => {
       if (settled) return;
       settled = true;
       try {
-        ws.close();
+        if (opened && ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        } else if (ws.readyState === WebSocket.CONNECTING) {
+          ws.terminate();
+        }
       } catch {
-        // ignore
+        // ignore cleanup errors
       }
       const vessels = Array.from(local.values());
       for (const vessel of vessels) {
@@ -204,6 +209,7 @@ function collectBurst(apiKey: string, timeoutMs = 3500, maxMessages = 120): Prom
     const timer = setTimeout(finalize, timeoutMs);
 
     ws.on('open', () => {
+      opened = true;
       ws.send(
         JSON.stringify({
           APIKey: apiKey,
@@ -235,12 +241,16 @@ function collectBurst(apiKey: string, timeoutMs = 3500, maxMessages = 120): Prom
     });
 
     ws.on('error', (err) => {
-      state.lastError = err.message;
+      state.lastError = `Burst websocket error: ${err.message}`;
       clearTimeout(timer);
       finalize();
     });
 
-    ws.on('close', () => {
+    ws.on('close', (code, reasonBuffer) => {
+      const reason = reasonBuffer.toString('utf8');
+      if (!settled && code !== 1000 && code !== 1001) {
+        state.lastError = `Burst socket closed (${code})${reason ? `: ${reason}` : ''}`;
+      }
       clearTimeout(timer);
       finalize();
     });
