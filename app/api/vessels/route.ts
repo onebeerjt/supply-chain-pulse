@@ -11,7 +11,10 @@ export async function GET() {
       vessels: data.vessels,
       sourceMode: data.sourceMode,
       message: data.message,
-      updatedAt: data.updatedAt
+      updatedAt: data.updatedAt,
+      diagnostics: {
+        hasAisKey: Boolean(process.env.AISSTREAM_API_KEY)
+      }
     },
     { status: 200 }
   );

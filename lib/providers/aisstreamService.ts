@@ -18,6 +18,14 @@ interface FeedState {
 
 const TEN_MIN_MS = 10 * 60 * 1000;
 const WS_URL = 'wss://stream.aisstream.io/v0/stream';
+const AIS_BOUNDS: number[][][] = [
+  [[32.2, -122.8], [35.4, -117.0]], // Los Angeles / Long Beach
+  [[8.0, -80.8], [10.3, -78.8]], // Panama Canal
+  [[50.7, 2.0], [53.0, 5.9]], // Rotterdam
+  [[30.1, 120.0], [32.4, 122.8]], // Shanghai
+  [[1.0, 103.2], [1.7, 104.2]], // Singapore
+  [[28.4, 120.8], [30.3, 122.8]] // Ningbo extension
+];
 
 declare global {
   // eslint-disable-next-line no-var
@@ -126,13 +134,7 @@ function connect(state: FeedState, apiKey: string) {
       ws.send(
         JSON.stringify({
           APIKey: apiKey,
-          BoundingBoxes: [
-            [
-              [-90, -180],
-              [90, 180]
-            ]
-          ],
-          FilterMessageTypes: ['PositionReport']
+          BoundingBoxes: AIS_BOUNDS
         })
       );
     });
@@ -182,6 +184,7 @@ function collectBurst(apiKey: string, timeoutMs = 12000, maxMessages = 120): Pro
     const local = new Map<number, Vessel>();
     let settled = false;
     let opened = false;
+    let timedOut = false;
 
     const ws = new WebSocket(WS_URL);
     const finalize = () => {
@@ -206,20 +209,17 @@ function collectBurst(apiKey: string, timeoutMs = 12000, maxMessages = 120): Pro
       resolve(vessels);
     };
 
-    const timer = setTimeout(finalize, timeoutMs);
+    const timer = setTimeout(() => {
+      timedOut = true;
+      finalize();
+    }, timeoutMs);
 
     ws.on('open', () => {
       opened = true;
       ws.send(
         JSON.stringify({
           APIKey: apiKey,
-          BoundingBoxes: [
-            [
-              [-90, -180],
-              [90, 180]
-            ]
-          ],
-          FilterMessageTypes: ['PositionReport']
+          BoundingBoxes: AIS_BOUNDS
         })
       );
     });
@@ -241,14 +241,17 @@ function collectBurst(apiKey: string, timeoutMs = 12000, maxMessages = 120): Pro
     });
 
     ws.on('error', (err) => {
-      state.lastError = `Burst websocket error: ${err.message}`;
+      const msg = err.message ?? 'unknown websocket error';
+      if (!(timedOut && msg.includes('closed before the connection was established'))) {
+        state.lastError = `Burst websocket error: ${msg}`;
+      }
       clearTimeout(timer);
       finalize();
     });
 
     ws.on('close', (code, reasonBuffer) => {
       const reason = reasonBuffer.toString('utf8');
-      if (!settled && code !== 1000 && code !== 1001) {
+      if (!settled && !timedOut && code !== 1000 && code !== 1001) {
         state.lastError = `Burst socket closed (${code})${reason ? `: ${reason}` : ''}`;
       }
       clearTimeout(timer);
