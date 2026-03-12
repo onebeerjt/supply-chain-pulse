@@ -9,6 +9,8 @@ interface FeedState {
   ws: WebSocket | null;
   started: boolean;
   vessels: Map<number, Vessel>;
+  lastKnownSnapshot: Vessel[];
+  lastKnownAt: string | null;
   lastMessageAt: number | null;
   lastError: string | null;
   reconnectTimer: NodeJS.Timeout | null;
@@ -38,6 +40,8 @@ function getState(): FeedState {
       ws: null,
       started: false,
       vessels: new Map<number, Vessel>(),
+      lastKnownSnapshot: [],
+      lastKnownAt: null,
       lastMessageAt: null,
       lastError: null,
       reconnectTimer: null,
@@ -110,6 +114,10 @@ function cleanupStale(state: FeedState) {
     if (new Date(vessel.updatedAt).getTime() < cutoff) {
       state.vessels.delete(mmsi);
     }
+  }
+  if (state.vessels.size > 0) {
+    state.lastKnownSnapshot = Array.from(state.vessels.values());
+    state.lastKnownAt = new Date(Math.max(...state.lastKnownSnapshot.map((v) => new Date(v.updatedAt).getTime()))).toISOString();
   }
 }
 
@@ -193,8 +201,6 @@ function collectBurst(apiKey: string, timeoutMs = 12000, maxMessages = 120): Pro
       try {
         if (opened && ws.readyState === WebSocket.OPEN) {
           ws.close();
-        } else if (ws.readyState === WebSocket.CONNECTING) {
-          ws.terminate();
         }
       } catch {
         // ignore cleanup errors
@@ -242,7 +248,7 @@ function collectBurst(apiKey: string, timeoutMs = 12000, maxMessages = 120): Pro
 
     ws.on('error', (err) => {
       const msg = err.message ?? 'unknown websocket error';
-      if (!(timedOut && msg.includes('closed before the connection was established'))) {
+      if (!msg.toLowerCase().includes('closed before the connection was established')) {
         state.lastError = `Burst websocket error: ${msg}`;
       }
       clearTimeout(timer);
@@ -251,7 +257,7 @@ function collectBurst(apiKey: string, timeoutMs = 12000, maxMessages = 120): Pro
 
     ws.on('close', (code, reasonBuffer) => {
       const reason = reasonBuffer.toString('utf8');
-      if (!settled && !timedOut && code !== 1000 && code !== 1001) {
+      if (!settled && !timedOut && code !== 1000 && code !== 1001 && code !== 1006) {
         state.lastError = `Burst socket closed (${code})${reason ? `: ${reason}` : ''}`;
       }
       clearTimeout(timer);
@@ -286,24 +292,49 @@ export async function getAisVesselsSnapshot(): Promise<{
   cleanupStale(state);
 
   let vessels = Array.from(state.vessels.values());
-  const cacheStale = !state.lastMessageAt || Date.now() - state.lastMessageAt > 90_000;
+  const cacheStale = !state.lastMessageAt || Date.now() - state.lastMessageAt > 5 * 60_000;
   const burstCooldownPassed = !state.lastBurstAt || Date.now() - state.lastBurstAt > 20_000;
+  const hasSnapshot = state.lastKnownSnapshot.length > 0;
   if ((vessels.length === 0 || cacheStale) && burstCooldownPassed) {
-    try {
-      const burst = await collectBurst(apiKey);
-      if (burst.length > 0) {
-        vessels = Array.from(state.vessels.values());
+    if (!hasSnapshot) {
+      try {
+        const burst = await collectBurst(apiKey);
+        if (burst.length > 0) {
+          vessels = Array.from(state.vessels.values());
+          state.lastError = null;
+        }
+      } catch {
+        // continue with fallback if bootstrap fails
       }
-    } catch {
-      // continue with cached/fallback behavior
     }
+
+    void collectBurst(apiKey)
+      .then((burst) => {
+        if (burst.length > 0) {
+          state.lastError = null;
+        }
+      })
+      .catch(() => {
+        // keep existing cache/fallback
+      });
+  }
+
+  if (vessels.length === 0 && state.lastKnownSnapshot.length > 0) {
+    return {
+      mode: 'live',
+      message: `Using cached AIS snapshot from ${state.lastKnownAt ?? now} while feed refreshes.`,
+      vessels: state.lastKnownSnapshot,
+      updatedAt: state.lastKnownAt ?? now
+    };
   }
 
   if (vessels.length > 0) {
+    state.lastKnownSnapshot = vessels;
+    state.lastKnownAt = new Date(Math.max(...vessels.map((v) => new Date(v.updatedAt).getTime()))).toISOString();
     return {
       mode: 'live',
       vessels,
-      updatedAt: new Date(Math.max(...vessels.map((v) => new Date(v.updatedAt).getTime()))).toISOString()
+      updatedAt: state.lastKnownAt
     };
   }
 
